@@ -2,9 +2,7 @@ import { WebSocketController } from "./controller";
 
 export async function handler(event: any, context: any)
 {
-	console.log('Reached route.ts file');
-	console.log(event);
-	console.log(context);
+	console.log('Event : ', event);
 
 	let wsController = new WebSocketController();
 	let successResponse: any = { statusCode: 200 };
@@ -23,8 +21,12 @@ export async function handler(event: any, context: any)
 				await wsController.onDisconnect(event, context);
 				break;
 
-			case 'test':
-				await wsController.onTest(event, context);
+			case 'heartbeat':
+				await wsController.onHeartbeat(event, context);
+				break;
+
+			case 'notify':
+				await wsController.onNotify(event, context);
 				break;
 
 			case '$default':
