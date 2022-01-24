@@ -1,0 +1,35 @@
+app: souravtest
+service: chatapi
+frameworkVersion: "2"
+
+provider:
+  name: aws
+  stage: dev
+  region: ap-south-1
+  profile: personal
+
+plugins:
+  - serverless-plugin-typescript
+
+functions:
+  # Create a Lambda function that responds to messages for the predefined routes
+  websocket:
+    handler: src/websocket/routes.handler
+    events:
+      - websocket:
+          # Handles new connection requests
+          route: $connect
+
+      - websocket:
+          # Route messages here if '$request.body.action' is 'routeA'.
+          # You can adjust which property to use for routing by adjusting
+          # 'websocketsApiRouteSelectionExpression'.
+          route: test
+
+      - websocket:
+          # Handles all unrouted messages
+          route: $default
+
+      - websocket:
+          # Handles disconnect messages
+          route: $disconnect
