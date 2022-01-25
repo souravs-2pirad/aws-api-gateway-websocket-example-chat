@@ -1,16 +1,19 @@
 var socket;
+var serverMessagesDiv = document.getElementById('server_messages');
+console.log(serverMessagesDiv);
 
 function connect()
 {
 	// Create WebSocket connection.
-	let url = 'wss://33k2co1ow4.execute-api.ap-south-1.amazonaws.com/dev';
+	let url = 'wss://ypo1jbvgpd.execute-api.ap-south-1.amazonaws.com/dev';
 	console.log('Creating Socket ...');
 	socket = new WebSocket(url);
 
 	// Connection opened
 	socket.onopen = function (event)
 	{
-		console.log('Socket Opened', new Date().toISOString());
+		let msg = `[${new Date().toISOString()}] Socket Opened`;
+		serverMessagesDiv.innerText = serverMessagesDiv.innerText + '\n' + msg;
 		let pingButton = document.getElementById('ping');
 		pingButton.disabled = false;
 	};
@@ -24,7 +27,8 @@ function connect()
 	// Listen for messages
 	socket.onmessage = function (event)
 	{
-		console.log('Message from server ', JSON.parse(event.data), new Date().toISOString());
+		let msg = `[${new Date().toISOString()}] Message from server : ${JSON.stringify(JSON.parse(event.data))}`;
+		serverMessagesDiv.innerText = serverMessagesDiv.innerText + '\n' + msg;
 		let type = JSON.parse(event.data).type;
 		if (type == "heartbeat")
 		{
@@ -32,6 +36,13 @@ function connect()
 			apiButton.disabled = false;
 		}
 	};
+}
+
+function disconnect()
+{
+	socket.close();
+	let msg = `[${new Date().toISOString()}] Disconnected`;
+	serverMessagesDiv.innerText = serverMessagesDiv.innerText + '\n' + msg;
 }
 
 function ping()
