@@ -13,9 +13,12 @@ function connect()
 	socket.onopen = function (event)
 	{
 		let msg = `[${new Date().toISOString()}] Socket Opened`;
+		console.log(msg);
+		console.log('event : ', event);
 		serverMessagesDiv.innerText = serverMessagesDiv.innerText + '\n' + msg;
 		let pingButton = document.getElementById('ping');
 		pingButton.disabled = false;
+		removeCookie();
 	};
 
 	// Errors

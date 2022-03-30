@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Document</title>
+	<script defer src="index.js"></script>
+</head>
+<body>
+
+	<input id="tokenInput" type="text" placeholder="token" />
+	<button id="connect" onclick="connect()" style="margin-right: 20px;">Connect</button>
+	<button id="disconnect" onclick="disconnect()">Disconnect</button>
+	<br><br>
+
+	<input id="cognitoIdInput" type="text" placeholder="cognitoId" />
+	<button disabled="true" id="getNotificationsButton" onclick="getNotifications()">get notifications</button>
+
+	<br><br>
+
+	<input id="notificationIdInput" type="text" />
+	<button disabled="true" id="updateNotificationButton" onclick="updateNotification()">Update Notification</button>
+
+	<button onclick="clearLogs()">Clear Logs</button>
+
+	<h1>Messages From Server</h1>
+	<div id="server_messages"></div>
+</body>
+</html>
