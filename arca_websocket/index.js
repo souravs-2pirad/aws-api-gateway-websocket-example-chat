@@ -18,12 +18,11 @@ async function delay(ms)
 
 function ping()
 {
+	let msg = 'Sending ping';
+	console.log(msg);
+	appendToLogs(msg);
+
 	socket.send('ping');
-	pingTimeout = setTimeout(function ()
-	{
-		/// ---connection closed ///
-		retrySocketConnection();
-	}, 5000);
 }
 
 function appendToLogs(msg)
@@ -50,6 +49,8 @@ function connect()
 			console.log(msg);
 			appendToLogs(msg);
 
+			ping();
+
 			// Ping Every 9 minutes
 			clearInterval(pingInterval);
 			pingInterval = setInterval(ping, 9 * 60 * 1000); // AWS Idle Timeout is 9 mins. Ref : https://docs.aws.amazon.com/apigateway/latest/developerguide/limits.html
@@ -66,13 +67,6 @@ function connect()
 			let msg = `server sent event : ${event?.data}`;
 			console.log(msg);
 			appendToLogs(msg);
-
-			// ping pong
-			if (event?.data == 'pong')
-			{
-				clearTimeout(pingTimeout);
-				return;
-			}
 
 			// getNotifications
 			let payload = JSON.parse(event.data);
@@ -92,9 +86,9 @@ function connect()
 		// Errors
 		socket.onerror = function (event)
 		{
-			reject(event);
 			console.log('Some socket error ', event);
 			appendToLogs(`Some socket error ${event}`);
+			reject(event);
 		};
 
 		socket.onclose = function (event)
