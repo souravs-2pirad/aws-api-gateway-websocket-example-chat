@@ -8,12 +8,12 @@ var pingInterval;
 var notificationsArray = [];
 
 var MAX_RETRY = 10;
-var DELAY = 60 * 1000;
-var OFFSET_DELAY = 30 * 1000;
+var DELAY = 30 * 1000;
+var OFFSET_DELAY = 15 * 1000;
 
 async function delay(ms)
 {
-	new Promise(resolve => setTimeout(resolve, ms));
+	return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function ping()
@@ -31,7 +31,43 @@ function appendToLogs(msg)
 	serverMessagesDiv.innerText = serverMessagesDiv.innerText + '\n' + msgWithTime;
 }
 
-function connect()
+function socketOnMessageHandler(event)
+{
+	let msg = `server sent event : ${event?.data}`;
+	console.log(msg);
+	appendToLogs(msg);
+
+	// getNotifications
+	let payload = JSON.parse(event.data);
+	if (payload.action === 'getNotifications')
+	{
+		console.log('Notifications : ', payload.data);
+		notificationsArray = notificationsArray.concat(...payload.data);
+	}
+
+	// notifyFromUi
+	if (payload.action === 'notifyFromUi')
+	{
+		console.log('Notification Ack Received : ', payload.data);
+	}
+};
+
+async function socketOnCloseHander(event)
+{
+	console.log('Socket closed by server ', event);
+	appendToLogs('Socket closed by server');
+
+	if (event.reason !== 'ARCA_CLOSE')
+	{
+		console.log('Socket closed by server due to some reason other than ARCA_CLOSE', event);
+		appendToLogs('Socket closed by server due to some reason other than ARCA_CLOSE');
+
+		await retrySocketConnection();
+		return;
+	}
+};
+
+function createSocket()
 {
 	return new Promise(function (resolve, reject)
 	{
@@ -44,12 +80,49 @@ function connect()
 		// Connection opened
 		socket.onopen = function (event)
 		{
-			resolve(socket);
 			let msg = 'Socket Opened';
 			console.log(msg);
 			appendToLogs(msg);
+			resolve(socket);
+		};
 
-			ping();
+		// Errors
+		socket.onerror = async function (event)
+		{
+			console.log('Some socket error ', event);
+			appendToLogs(`Some socket error ${event}`);
+
+			// await retrySocketConnection();
+			reject(event);
+
+		};
+	});
+}
+
+async function connect()
+{
+	console.log('User clicked connect button');
+	await retrySocketConnection();
+}
+
+async function retrySocketConnection()
+{
+	let retryAvailable = MAX_RETRY;
+	while (retryAvailable > 0)
+	{
+		try
+		{
+			let msg = `Retrying Socket Connection : ${retryAvailable}`;
+			console.log(msg);
+			appendToLogs(msg);
+
+			await createSocket();
+
+			// Listen for messages
+			socket.onmessage = socketOnMessageHandler;
+
+			// Listen for close
+			socket.onclose = socketOnCloseHander;
 
 			// Ping Every 9 minutes
 			clearInterval(pingInterval);
@@ -59,69 +132,34 @@ function connect()
 			getNotificationsButton.disabled = false;
 			let updateNotificationButton = document.getElementById('updateNotificationButton');
 			updateNotificationButton.disabled = false;
-		};
 
-		// Listen for messages
-		socket.onmessage = function (event)
-		{
-			let msg = `server sent event : ${event?.data}`;
-			console.log(msg);
-			appendToLogs(msg);
-
-			// getNotifications
-			let payload = JSON.parse(event.data);
-			if (payload.action === 'getNotifications')
-			{
-				console.log('Notifications : ', payload.data);
-				notificationsArray = payload.data;
-			}
-
-			// notifyFromUi
-			if (payload.action === 'notifyFromUi')
-			{
-				console.log('Notification Ack Received : ', payload.data);
-			}
-		};
-
-		// Errors
-		socket.onerror = function (event)
-		{
-			console.log('Some socket error ', event);
-			appendToLogs(`Some socket error ${event}`);
-			reject(event);
-		};
-
-		socket.onclose = function (event)
-		{
-			console.log('Socket closed by server ', event);
-			appendToLogs('Socket closed by server');
-		};
-	});
-}
-
-async function retrySocketConnection()
-{
-	let retryAvailable = MAX_RETRY;
-	while (retryAvailable > 0)
-	{
-		let offset = (MAX_RETRY - retryAvailable) * OFFSET_DELAY;
-		await delay(DELAY + offset);
-		try
-		{
-			await connect();
 			retryAvailable = -1;
 		}
 		catch (error)
 		{
 			console.log('Socket connection failed', error);
+			let msg = `Socket connection failed : ${retryAvailable}`;
+			appendToLogs(msg);
+
+			let offset = (MAX_RETRY - retryAvailable) * OFFSET_DELAY;
+			console.log(`Delay : ${DELAY + offset}`);
+			await delay(DELAY + offset);
+
 			retryAvailable--;
 		}
+	}
+
+	if (retryAvailable === 0)
+	{
+		let msg = 'All retries exhauseted. Socket connection failed. PLEASE LOGOUT';
+		console.log(msg);
+		appendToLogs(msg);
 	}
 }
 
 function disconnect()
 {
-	socket.close();
+	socket.close(3001, 'ARCA_CLOSE');
 	let msg = 'Disconnected Button Clicked';
 	appendToLogs(msg);
 }
@@ -133,8 +171,17 @@ function getNotifications()
 		"action": "getNotifications",
 		"sender": "arcaUi",
 		"recipient": cognitoId,
-		data: [],
 	};
+
+	if (notificationsArray?.length > 0)
+	{
+		payload.data = notificationsArray[notificationsArray.length - 1];
+	}
+	else
+	{
+		payload.data = [];
+	}
+
 	console.log('Get Notifications Button Clicked : ', payload);
 	appendToLogs('Get Notifications Button Clicked');
 	socket.send(JSON.stringify(payload));
